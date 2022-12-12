@@ -1,0 +1,9 @@
+﻿{
+  "agentId": 2,
+  "agentName": "sakVB",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelines.actions.githubusercontent.com/ECzH75DRXJqrVGzY2EYzNKYmqj61FCtfhtO09mmriXHdjkLbcI",
+  "gitHubUrl": "https://github.com/cu-ecen-aeld/assignment-1-sametAkTrials",
+  "workFolder": "_work"
+}

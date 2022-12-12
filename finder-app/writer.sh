@@ -8,6 +8,8 @@ if [ 2 -ne $paramNum ]
 then
 	echo "Missing parameter !"
 	return 1
+#else
+	#echo "No Problem about Params"
 fi
 
 mkdir -p "$(dirname "$writefile")" && touch "$writefile"
@@ -21,5 +23,4 @@ else
 	echo "File could not be created at ${writefile} !"
 	return 1
 fi
-
 
