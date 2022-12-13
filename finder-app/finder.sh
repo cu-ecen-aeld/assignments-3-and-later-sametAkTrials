@@ -7,7 +7,7 @@ searchstr=$2
 if [ 2 -ne $paramNum ]
 then
 	echo "Missing parameter !"
-	exit 1
+	return 1
 # else
 	# echo "No Problem about Params"
 fi
@@ -15,9 +15,9 @@ fi
 if [ ! -d "$filesdir" ] 
 then
 	echo "File doesn't exist at ${filesdir} !"
-	exit 1
-else
-	echo "File exists at ${filesdir}."
+	return 1
+# else
+#	echo "File exists at ${filesdir}."
 fi
 
 foundedLineCount=$(grep -r $searchstr $filesdir* | wc -l)
