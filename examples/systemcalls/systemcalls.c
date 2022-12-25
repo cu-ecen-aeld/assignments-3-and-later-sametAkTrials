@@ -1,3 +1,10 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "systemcalls.h"
 
 /**
@@ -16,8 +23,19 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+	
+	int resp = system(cmd);
+	
+	if(resp == -1)
+	{
+		return false;
+		perror("system Call Error");
+	}
+	else
+	{
+		return true;
+	}
+	
 }
 
 /**
@@ -47,7 +65,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    // command[count] = command[count];
 
 /*
  * TODO:
@@ -58,10 +76,50 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
-
+	bool retVal = false;
+	pid_t pid = fork();
+	
+	if(pid == -1)
+	{
+		perror("fork error");
+	}
+	if(pid == 0) /// child process
+	{
+		int resp = execv(command[0], command);
+		
+		if(resp == -1)
+		{
+			perror("execv error");
+			exit(-1);
+		}
+	}
+	else
+	{
+		int waitStat;
+		pid_t retPid = wait(&waitStat);
+		
+		if(retPid == -1)
+		{
+			perror("wait error");
+		}
+		else /// retPid == pid
+		{
+			if(WIFEXITED(waitStat))
+			{
+				printf("exit stat: %d\n", WEXITSTATUS(waitStat));
+				if(WEXITSTATUS(waitStat) > 0)
+				{
+					perror("exit error");
+				}
+				else
+				{
+					retVal = true;
+				}
+			}
+		}
+	}
     va_end(args);
-
-    return true;
+    return retVal;
 }
 
 /**
@@ -75,14 +133,22 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     va_start(args, count);
     char * command[count+1];
     int i;
+    
+    pid_t pid = 0;
+    int wait_ret = 0;
+    int wait_status = 0;
+    bool retVal = true;
+    int temp_fd = 0;
+    
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
     }
+    
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    // command[count] = command[count];
 
 
 /*
@@ -93,7 +159,58 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
+	temp_fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if (temp_fd < 0)
+	{
+		perror("open");
+		retVal = false;
+	}
+	else
+	{
+		pid = fork();
+		if (pid == -1)
+		{
+			perror("fork");
+			retVal = false;
+		}
+		else if (pid == 0)
+		{
+			if (dup2(temp_fd, 1) < 0)
+			{
+				perror("dup2");
+				retVal = false;
+			}
+			else
+			{
+				close(temp_fd);
+				execv(command[0], (char *const *)command);
+				exit(-1);
+			}
+		}
+		else
+		{
+			//Parent process do nothing
+		}
+		
+		wait_ret = waitpid(pid, &wait_status, 0);
+		if (wait_ret == -1)
+		{
+			perror("wait");
+			retVal = false;
+		}
+		else if (WIFEXITED(wait_status))
+		{
+			if (WEXITSTATUS(wait_status) > 0)
+			{
+				printf("Command failed\n");
+				retVal = false;
+			}
+		}
+		else
+		{
+			printf("Unexpected exit status %d\n",WEXITSTATUS(wait_status));
+		}
+	}
     va_end(args);
-
-    return true;
+    return retVal;
 }
