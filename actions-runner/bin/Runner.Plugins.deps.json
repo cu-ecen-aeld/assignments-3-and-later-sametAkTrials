@@ -7,7 +7,7 @@
   "targets": {
     ".NETCoreApp,Version=v6.0": {},
     ".NETCoreApp,Version=v6.0/linux-x64": {
-      "Runner.Plugins/2.299.1": {
+      "Runner.Plugins/2.300.2": {
         "dependencies": {
           "Runner.Sdk": "1.0.0",
           "Sdk": "1.0.0"
@@ -1118,7 +1118,7 @@
     }
   },
   "libraries": {
-    "Runner.Plugins/2.299.1": {
+    "Runner.Plugins/2.300.2": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

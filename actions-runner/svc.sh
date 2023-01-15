@@ -1,8 +1,8 @@
 #!/bin/bash
 
-SVC_NAME="actions.runner.cu-ecen-aeld-assignment-1-sametAkTrials.sakVB.service"
+SVC_NAME="actions.runner.cu-ecen-aeld-assignments-3-and-later-sametAkTrials.ubuntu.service"
 SVC_NAME=${SVC_NAME// /_}
-SVC_DESCRIPTION="GitHub Actions Runner (cu-ecen-aeld-assignment-1-sametAkTrials.sakVB)"
+SVC_DESCRIPTION="GitHub Actions Runner (cu-ecen-aeld-assignments-3-and-later-sametAkTrials.ubuntu)"
 
 SVC_CMD=$1
 arg_2=${2}
