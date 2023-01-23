@@ -1,7 +1,13 @@
 # -*- Makefile *-*
+	
+all: writer
 
-all:
-	${CROSS_COMPILE}gcc -o writer writer.c
+writer.o: writer.c
+	$(CC) $(CCFLAGS) -c writer.c
 
-clean:
-	rm -rf writer
+writer: writer.o
+	$(CC) $(LDFLAGS) writer.o -o writer
+
+clean :
+	rm -f writer.o writer
+	
