@@ -1,9 +1,0 @@
-﻿{
-  "agentId": 23,
-  "agentName": "ubuntu",
-  "poolId": 1,
-  "poolName": "Default",
-  "serverUrl": "https://pipelines.actions.githubusercontent.com/WNckki0eHTpNGWWdeAzoy0v4JWe0ISpu6HgtHF2dw9yIJ0z03d",
-  "gitHubUrl": "https://github.com/cu-ecen-aeld/assignments-3-and-later-sametAkTrials",
-  "workFolder": "_work"
-}
