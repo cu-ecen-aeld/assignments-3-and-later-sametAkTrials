@@ -128,12 +128,12 @@ int main (int argc, char *argv[])
 
     if(deamon_mode)
     {
-        syslog(LOG_ERR, "in deamon mode");
+        syslog(LOG_INFO, "in deamon mode");
         pid_t pid = fork();
 
         if(pid <= -1)
         {
-            syslog(LOG_INFO, "fork error");
+            syslog(LOG_ERR, "fork error");
             perror("Cannot fork");
             closelog();
             close(sockfd);
