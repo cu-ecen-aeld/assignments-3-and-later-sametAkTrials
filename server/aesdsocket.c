@@ -109,6 +109,9 @@ int main (int argc, char *argv[])
         exit(FAIL);
     }
 
+    syslog(LOG_INFO, "[ MP ] - removing log file if it exists");
+    remove(FILE_NAME);
+
     syslog(LOG_INFO, "[ MP ] - socket opening");
 
     socket_fd = socket(PF_INET, SOCK_STREAM, 0);
