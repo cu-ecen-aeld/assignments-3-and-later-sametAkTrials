@@ -200,21 +200,6 @@ int main (int argc, char *argv[])
         closelog();
         exit(FAIL);
     }
-    syslog(LOG_INFO, "[ MP ] - creating timestamp thread");
-    timestamp_thread_args.file_mutex = &file_mutex;
-    timestamp_thread_args.thread_is_completed = 0;
-    rc = pthread_create(&(timestamp_thread_args.thread_id),
-                                    NULL, // Use default attributes
-                                    timestamp_thread,
-                                    &timestamp_thread_args);
-    if(rc != SUCCESS)
-    {
-        syslog(LOG_ERR, "[ MP ] - cannot create timestamp thread");
-        perror("[ MP ] - cannot create timestamp thread\n");
-        closelog();
-        close(socket_fd);
-        exit(FAIL);
-    }
 
     while(caught_signal == 0)
     {
@@ -228,6 +213,24 @@ int main (int argc, char *argv[])
         }
         else
         {
+            if (!timestamp_thread_args.thread_id)
+            {
+                syslog(LOG_INFO, "[ MP ] - creating timestamp thread");
+                timestamp_thread_args.file_mutex = &file_mutex;
+                timestamp_thread_args.thread_is_completed = 0;
+                rc = pthread_create(&(timestamp_thread_args.thread_id),
+                                    NULL, // Use default attributes
+                                    timestamp_thread,
+                                    &timestamp_thread_args);
+                if (rc != SUCCESS)
+                {
+                    syslog(LOG_ERR, "[ MP ] - cannot create timestamp thread");
+                    perror("[ MP ] - cannot create timestamp thread\n");
+                    closelog();
+                    close(socket_fd);
+                    exit(FAIL);
+                }
+            }
             inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
             syslog(LOG_INFO, "[ MP ] - Accepted connection from %s\n", s);
             queue_data_p = malloc(sizeof(struct slist_data_s));
