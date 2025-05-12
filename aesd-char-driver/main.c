@@ -62,23 +62,33 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
     struct aesd_circular_buffer *circ_buf = dev->aesd_circ_bufp;
 
     if(!circ_buf->entry_count) {
+        PDEBUG("read empty buf...");
         retval = 0;
         goto exit;
     }
 
     size_t send_data_count = count > circ_buf->entry[circ_buf->out_offs].size - *f_pos ? circ_buf->entry[circ_buf->out_offs].size - *f_pos : count;
+    PDEBUG("read send_data_count: %zu out_offs: %zu data: %s", send_data_count, circ_buf->out_offs, (circ_buf->entry[circ_buf->out_offs].buffptr + *f_pos));
 
     if (send_data_count > 0) {
-        if (copy_from_user((circ_buf->entry[circ_buf->out_offs].buffptr + *f_pos), buf, send_data_count) != 0) {
+        if (copy_to_user(buf, (circ_buf->entry[circ_buf->out_offs].buffptr + *f_pos), send_data_count) != 0) {
             retval = -EFAULT;
+            PDEBUG("read cannot copy to user goto exit...");
             goto exit;
         }
         retval = send_data_count;
 
-        if(circ_buf->entry[circ_buf->out_offs].size > *f_pos + send_data_count)
+        if(circ_buf->entry[circ_buf->out_offs].size > *f_pos + send_data_count) {
             *f_pos += send_data_count;
+        }
         else {
             *f_pos = 0;
+            PDEBUG("read whole data read freeing index: %d data: %s data_addr: %x", dev->aesd_circ_bufp->out_offs, circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr, circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr);
+            kfree(circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr);
+            circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr = NULL;
+            circ_buf->entry[dev->aesd_circ_bufp->out_offs].size = 0;
+            if(circ_buf->entry_count) 
+                circ_buf->entry_count--;
             circ_buf->out_offs = (circ_buf->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
         }
     }
@@ -98,32 +108,48 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
 
     if(dev->incomplete_entry.buffptr) {
         entry_buf_size += dev->incomplete_entry.size;
+        PDEBUG("write incomplete data exist... old_size: %zu new_size: %zu",dev->incomplete_entry.size, entry_buf_size);
     }
 
+    PDEBUG("write allocating memory alloc_size: %zu", entry_buf_size);
     char *entry_buf = kmalloc(entry_buf_size * sizeof(char), GFP_KERNEL);
     if(entry_buf == NULL) {
         retval = -ENOMEM;
+        PDEBUG("write cannot allocate memory goto exit... alloc_size: %zu", entry_buf_size);
         goto exit;
     }
+    PDEBUG("write allocated memory addr: %x", entry_buf);
 
     if(dev->incomplete_entry.buffptr) {
         memcpy(entry_buf, dev->incomplete_entry.buffptr, dev->incomplete_entry.size);
         kfree(dev->incomplete_entry.buffptr);
         dev->incomplete_entry.buffptr = NULL;
+        PDEBUG("write incomplete data exist copy to new array");
     }
 
     if(copy_from_user(entry_buf + dev->incomplete_entry.size, buf, count)) {
         retval = -EFAULT;
+        PDEBUG("write cannot copy from user...");
         goto exit;
     }
 
     dev->incomplete_entry.size = entry_buf_size;
     dev->incomplete_entry.buffptr = entry_buf;
     if(dev->incomplete_entry.buffptr[entry_buf_size - 1] == '\n') {
+        PDEBUG("write terminated data... data: %s", dev->incomplete_entry.buffptr);
+        if(dev->aesd_circ_bufp->full) {
+            PDEBUG("write buffer full freeing data index: %d data_addr: %x", dev->aesd_circ_bufp->in_offs, dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].buffptr);
+            kfree(dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].buffptr);
+            dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].buffptr = NULL;
+            dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].size = 0;
+        }
         aesd_circular_buffer_add_entry(dev->aesd_circ_bufp, &dev->incomplete_entry);
-        kfree(dev->incomplete_entry.buffptr);
+        PDEBUG("write completed... in_offs: %d out_offs: %d entry_count: %d", dev->aesd_circ_bufp->in_offs, dev->aesd_circ_bufp->out_offs, dev->aesd_circ_bufp->entry_count);
         dev->incomplete_entry.buffptr = NULL;
         dev->incomplete_entry.size = 0;
+    }
+    else {
+        PDEBUG("write unterminated data... buf_size: %zu, last_ch: %d", entry_buf_size, dev->incomplete_entry.buffptr[entry_buf_size - 1]);
     }
     retval = count;
 
