@@ -59,27 +59,27 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
      * TODO: handle read
      */
     struct aesd_dev *dev = filp->private_data;
-    struct aesd_circular_buffer *buf = dev->aesd_circ_bufp;
+    struct aesd_circular_buffer *circ_buf = dev->aesd_circ_bufp;
 
-    if(!buf->entry_count) {
+    if(!circ_buf->entry_count) {
         retval = 0;
         goto exit;
     }
 
-    size_t send_data_count = count > buf->entry[buf->out_offs].size - *f_pos ? buf->entry[buf->out_offs].size - *f_pos : count;
+    size_t send_data_count = count > circ_buf->entry[circ_buf->out_offs].size - *f_pos ? circ_buf->entry[circ_buf->out_offs].size - *f_pos : count;
 
     if (send_data_count > 0) {
-        if (copy_from_user((buf->entry[buf->out_offs].buffptr + *f_pos), buf, send_data_count) != 0) {
+        if (copy_from_user((circ_buf->entry[circ_buf->out_offs].buffptr + *f_pos), buf, send_data_count) != 0) {
             retval = -EFAULT;
             goto exit;
         }
         retval = send_data_count;
 
-        if(buf->entry[buf->out_offs].size > *f_pos + send_data_count)
+        if(circ_buf->entry[circ_buf->out_offs].size > *f_pos + send_data_count)
             *f_pos += send_data_count;
         else {
             *f_pos = 0;
-            buf->out_offs = (buf->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+            circ_buf->out_offs = (circ_buf->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
         }
     }
 exit:
@@ -120,7 +120,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
     dev->incomplete_entry.size = entry_buf_size;
     dev->incomplete_entry.buffptr = entry_buf;
     if(dev->incomplete_entry.buffptr[entry_buf_size - 1] == '\n') {
-        aesd_circular_buffer_add_entry(dev->aesd_circ_bufp, dev->incomplete_entry)
+        aesd_circular_buffer_add_entry(dev->aesd_circ_bufp, &dev->incomplete_entry);
         kfree(dev->incomplete_entry.buffptr);
         dev->incomplete_entry.buffptr = NULL;
         dev->incomplete_entry.size = 0;
@@ -178,7 +178,8 @@ int aesd_init_module(void)
         goto fail;
     }
     aesd_circular_buffer_init(aesd_device.aesd_circ_bufp);
-    aesd_device.incomplete_entry = {0, NULL};
+    aesd_device.incomplete_entry.buffptr = NULL;
+    aesd_device.incomplete_entry.size = 0;
 
     result = aesd_setup_cdev(&aesd_device);
 
