@@ -61,6 +61,12 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
     struct aesd_dev *dev = filp->private_data;
     struct aesd_circular_buffer *circ_buf = dev->aesd_circ_bufp;
 
+    if (mutex_lock_interruptible(&dev->lock)) {
+        retval = -ERESTARTSYS;
+        PDEBUG("read mutex lock error...");
+        goto exit;
+    }
+
     if(!circ_buf->entry_count) {
         PDEBUG("read empty buf...");
         retval = 0;
@@ -93,6 +99,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
         }
     }
 exit:
+    mutex_unlock(&dev->lock);
     return retval;
 }
 
@@ -137,14 +144,24 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
     dev->incomplete_entry.buffptr = entry_buf;
     if(dev->incomplete_entry.buffptr[entry_buf_size - 1] == '\n') {
         PDEBUG("write terminated data... data: %s", dev->incomplete_entry.buffptr);
+
+        if (mutex_lock_interruptible(&dev->lock)) {
+			retval = -ERESTARTSYS;
+            PDEBUG("write mutex lock error...");
+            goto exit;
+        }
+
         if(dev->aesd_circ_bufp->full) {
             PDEBUG("write buffer full freeing data index: %d data_addr: %x", dev->aesd_circ_bufp->in_offs, dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].buffptr);
             kfree(dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].buffptr);
             dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].buffptr = NULL;
             dev->aesd_circ_bufp->entry[dev->aesd_circ_bufp->in_offs].size = 0;
         }
+
         aesd_circular_buffer_add_entry(dev->aesd_circ_bufp, &dev->incomplete_entry);
         PDEBUG("write completed... in_offs: %d out_offs: %d entry_count: %d", dev->aesd_circ_bufp->in_offs, dev->aesd_circ_bufp->out_offs, dev->aesd_circ_bufp->entry_count);
+        
+        mutex_unlock(&dev->lock);
         dev->incomplete_entry.buffptr = NULL;
         dev->incomplete_entry.size = 0;
     }
@@ -206,6 +223,7 @@ int aesd_init_module(void)
     aesd_circular_buffer_init(aesd_device.aesd_circ_bufp);
     aesd_device.incomplete_entry.buffptr = NULL;
     aesd_device.incomplete_entry.size = 0;
+    mutex_init(&aesd_device.lock);
 
     result = aesd_setup_cdev(&aesd_device);
 
@@ -226,6 +244,13 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
+    if(aesd_device.aesd_circ_bufp->entry_count) {
+        while(aesd_device.aesd_circ_bufp->in_offs != aesd_device.aesd_circ_bufp->out_offs) {
+            PDEBUG("release freeing... in_offs: %d out_offs: %d entry_count: %d", aesd_device.aesd_circ_bufp->in_offs, aesd_device.aesd_circ_bufp->out_offs, aesd_device.aesd_circ_bufp->entry_count);
+            kfree(aesd_device.aesd_circ_bufp->entry[aesd_device.aesd_circ_bufp->out_offs].buffptr);
+            aesd_device.aesd_circ_bufp->out_offs = (aesd_device.aesd_circ_bufp->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+        }
+    }
     kfree(aesd_device.aesd_circ_bufp);
     if(aesd_device.incomplete_entry.buffptr)
         kfree(aesd_device.incomplete_entry.buffptr);
