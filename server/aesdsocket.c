@@ -80,7 +80,7 @@ int main (int argc, char *argv[])
     char deamon_mode = 0;
 
     openlog(NULL, 0, LOG_USER);
-    syslog(LOG_INFO, "[ MP ] - aesdsocket app start... writing to: %s", FILE_NAME);
+    syslog(LOG_ERR, "[ MP ] - aesdsocket app start... writing to: %s\n", FILE_NAME);
 
     int option;
 
@@ -90,7 +90,7 @@ int main (int argc, char *argv[])
         {
         case 'd':
             deamon_mode = 1;
-            syslog(LOG_INFO, "[ MP ] - aesdsocket app start with deamon mode");
+            syslog(LOG_INFO, "[ MP ] - aesdsocket app start with deamon mode\n");
             break;
         
         default:
