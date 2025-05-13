@@ -20,7 +20,11 @@
 #define PORT_NUM ("9000")
 
 #define BUFFER_SIZE (50)
+#if (USE_AESD_CHAR_DEVICE == 1)
+#define FILE_NAME ("/dev/aesdchar")
+#else
 #define FILE_NAME ("/var/tmp/aesdsocketdata")
+#endif
 
 #define SLEEP_TIME (10000000)
 
@@ -76,7 +80,7 @@ int main (int argc, char *argv[])
     char deamon_mode = 0;
 
     openlog(NULL, 0, LOG_USER);
-    syslog(LOG_INFO, "[ MP ] - aesdsocket app start");
+    syslog(LOG_INFO, "[ MP ] - aesdsocket app start... writing to: %s", FILE_NAME);
 
     int option;
 
