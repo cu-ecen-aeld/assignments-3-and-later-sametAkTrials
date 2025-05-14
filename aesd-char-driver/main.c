@@ -246,7 +246,8 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
-    for(int i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) {
+    int i;
+    for(i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) {
         if(aesd_device.aesd_circ_bufp->entry[i].buffptr != NULL) {
             PDEBUG("release freeing... idx: %d buffptr: %x", i, aesd_device.aesd_circ_bufp->entry[i].buffptr);
             kfree(aesd_device.aesd_circ_bufp->entry[i].buffptr);
