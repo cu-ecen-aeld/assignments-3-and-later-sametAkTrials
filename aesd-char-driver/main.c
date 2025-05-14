@@ -73,6 +73,12 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
         goto exit;
     }
 
+    if(circ_buf->full == false && (circ_buf->out_offs == circ_buf->in_offs)) {
+        PDEBUG("read empty buf...");
+        retval = 0;
+        goto exit;
+    }
+
     size_t send_data_count = count > circ_buf->entry[circ_buf->out_offs].size - *f_pos ? circ_buf->entry[circ_buf->out_offs].size - *f_pos : count;
     PDEBUG("read send_data_count: %zu out_offs: %zu data: %s", send_data_count, circ_buf->out_offs, (circ_buf->entry[circ_buf->out_offs].buffptr + *f_pos));
 
@@ -90,12 +96,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
         else {
             *f_pos = 0;
             PDEBUG("read whole data read freeing index: %d data: %s data_addr: %x", dev->aesd_circ_bufp->out_offs, circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr, circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr);
-            kfree(circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr);
-            circ_buf->entry[dev->aesd_circ_bufp->out_offs].buffptr = NULL;
-            circ_buf->entry[dev->aesd_circ_bufp->out_offs].size = 0;
-            if(circ_buf->entry_count) 
-                circ_buf->entry_count--;
             circ_buf->out_offs = (circ_buf->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+            circ_buf->full = false;
         }
     }
 exit:
@@ -244,11 +246,10 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
-    if(aesd_device.aesd_circ_bufp->entry_count) {
-        while(aesd_device.aesd_circ_bufp->in_offs != aesd_device.aesd_circ_bufp->out_offs) {
-            PDEBUG("release freeing... in_offs: %d out_offs: %d entry_count: %d", aesd_device.aesd_circ_bufp->in_offs, aesd_device.aesd_circ_bufp->out_offs, aesd_device.aesd_circ_bufp->entry_count);
-            kfree(aesd_device.aesd_circ_bufp->entry[aesd_device.aesd_circ_bufp->out_offs].buffptr);
-            aesd_device.aesd_circ_bufp->out_offs = (aesd_device.aesd_circ_bufp->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    for(int i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) {
+        if(aesd_device.aesd_circ_bufp->entry[i].buffptr != NULL) {
+            PDEBUG("release freeing... idx: %d buffptr: %x", i, aesd_device.aesd_circ_bufp->entry[i].buffptr);
+            kfree(aesd_device.aesd_circ_bufp->entry[i].buffptr);
         }
     }
     kfree(aesd_device.aesd_circ_bufp);
