@@ -26,6 +26,10 @@
 #define FILE_NAME ("/var/tmp/aesdsocketdata")
 #endif
 
+#if (USE_AESD_CHAR_DEVICE == 0)
+#define PRINT_TIMESTAMP
+#endif
+
 #define SLEEP_TIME (10000000)
 
 void *timestamp_thread(void *thread_param);
@@ -114,7 +118,9 @@ int main (int argc, char *argv[])
     }
 
     syslog(LOG_INFO, "[ MP ] - removing log file if it exists");
+#if (USE_AESD_CHAR_DEVICE == 0)
     remove(FILE_NAME);
+#endif
 
     syslog(LOG_INFO, "[ MP ] - socket opening");
 
@@ -217,6 +223,7 @@ int main (int argc, char *argv[])
         }
         else
         {
+#ifdef PRINT_TIMESTAMP
             if (!timestamp_thread_args.thread_id)
             {
                 syslog(LOG_INFO, "[ MP ] - creating timestamp thread");
@@ -235,6 +242,7 @@ int main (int argc, char *argv[])
                     exit(FAIL);
                 }
             }
+#endif
             inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
             syslog(LOG_INFO, "[ MP ] - Accepted connection from %s\n", s);
             queue_data_p = malloc(sizeof(struct slist_data_s));
@@ -305,15 +313,19 @@ int main (int argc, char *argv[])
         }
     }
 
+#ifdef PRINT_TIMESTAMP
     syslog(LOG_INFO, "[ MP ] - waits timestamp thread end Timestamp TID : %lu", timestamp_thread_args.thread_id);
     while (!timestamp_thread_args.thread_is_completed);
     pthread_join(timestamp_thread_args.thread_id, NULL);
+#endif
 
     syslog(LOG_INFO, "[ MP ] - caught signal = %d", caught_signal);
     syslog(LOG_INFO, "[ MP ] - Close socket fd");
     close(accept_fd);
     shutdown(socket_fd, 2);
+#if (USE_AESD_CHAR_DEVICE == 0)
     remove(FILE_NAME);
+#endif
     closelog();
     exit(app_result);
 }
@@ -361,6 +373,10 @@ void *client_thread_function(void *thread_param)
     }
     else
     {
+#if (USE_AESD_CHAR_DEVICE == 1)
+        while(access(FILE_NAME, W_OK));
+#endif
+
         if ((fp = fopen(FILE_NAME, "a+")) == NULL)
         {
             syslog(LOG_ERR, "[ CT ] - file opening error!\n");
